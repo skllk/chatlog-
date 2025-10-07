@@ -156,6 +156,7 @@ var CurrentTimeTool = mcp.NewTool(
 
 type ContactRequest struct {
 	Keyword string `json:"keyword"`
+	Label   string `json:"label"`
 	Limit   int    `json:"limit"`
 	Offset  int    `json:"offset"`
 }
@@ -168,15 +169,36 @@ func (s *Service) handleMCPContact(ctx context.Context, request mcp.CallToolRequ
 		return errors.ErrMCPTool(err), nil
 	}
 
-	list, err := s.db.GetContacts(req.Keyword, req.Limit, req.Offset)
+	if req.Limit < 0 {
+		req.Limit = 0
+	}
+	if req.Offset < 0 {
+		req.Offset = 0
+	}
+
+	limit := req.Limit
+	offset := req.Offset
+	if req.Label != "" {
+		limit = 0
+		offset = 0
+	}
+
+	list, err := s.db.GetContacts(req.Keyword, limit, offset)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get contacts")
 		return errors.ErrMCPTool(err), nil
 	}
+
+	if req.Label != "" {
+		filtered := filterContactsByLabel(list.Items, req.Label)
+		filtered = paginateContacts(filtered, req.Offset, req.Limit)
+		list.Items = filtered
+	}
 	buf := &bytes.Buffer{}
-	buf.WriteString("UserName,Alias,Remark,NickName\n")
+	buf.WriteString("UserName,Alias,Remark,NickName,Labels\n")
 	for _, contact := range list.Items {
-		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", contact.UserName, contact.Alias, contact.Remark, contact.NickName))
+		labels := strings.Join(contact.Labels, ";")
+		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s\n", contact.UserName, contact.Alias, contact.Remark, contact.NickName, labels))
 	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
