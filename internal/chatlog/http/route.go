@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/sjzar/chatlog/internal/errors"
+	"github.com/sjzar/chatlog/internal/model"
 	"github.com/sjzar/chatlog/pkg/util"
 	"github.com/sjzar/chatlog/pkg/util/dat2img"
 	"github.com/sjzar/chatlog/pkg/util/silk"
@@ -159,6 +160,7 @@ func (s *Service) handleContacts(c *gin.Context) {
 
 	q := struct {
 		Keyword string `form:"keyword"`
+		Label   string `form:"label"`
 		Limit   int    `form:"limit"`
 		Offset  int    `form:"offset"`
 		Format  string `form:"format"`
@@ -169,10 +171,30 @@ func (s *Service) handleContacts(c *gin.Context) {
 		return
 	}
 
-	list, err := s.db.GetContacts(q.Keyword, q.Limit, q.Offset)
+	if q.Limit < 0 {
+		q.Limit = 0
+	}
+	if q.Offset < 0 {
+		q.Offset = 0
+	}
+
+	limit := q.Limit
+	offset := q.Offset
+	if q.Label != "" {
+		limit = 0
+		offset = 0
+	}
+
+	list, err := s.db.GetContacts(q.Keyword, limit, offset)
 	if err != nil {
 		errors.Err(c, err)
 		return
+	}
+
+	if q.Label != "" {
+		filtered := filterContactsByLabel(list.Items, q.Label)
+		filtered = paginateContacts(filtered, q.Offset, q.Limit)
+		list.Items = filtered
 	}
 
 	format := strings.ToLower(q.Format)
@@ -192,12 +214,46 @@ func (s *Service) handleContacts(c *gin.Context) {
 		c.Writer.Header().Set("Connection", "keep-alive")
 		c.Writer.Flush()
 
-		c.Writer.WriteString("UserName,Alias,Remark,NickName\n")
+		c.Writer.WriteString("UserName,Alias,Remark,NickName,Labels\n")
 		for _, contact := range list.Items {
-			c.Writer.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", contact.UserName, contact.Alias, contact.Remark, contact.NickName))
+			labels := strings.Join(contact.Labels, ";")
+			c.Writer.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s\n", contact.UserName, contact.Alias, contact.Remark, contact.NickName, labels))
 		}
 		c.Writer.Flush()
 	}
+}
+
+func filterContactsByLabel(contacts []*model.Contact, label string) []*model.Contact {
+	if label == "" || len(contacts) == 0 {
+		return contacts
+	}
+	filtered := make([]*model.Contact, 0, len(contacts))
+	for _, contact := range contacts {
+		for _, lb := range contact.Labels {
+			if lb == label {
+				filtered = append(filtered, contact)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+func paginateContacts(contacts []*model.Contact, offset, limit int) []*model.Contact {
+	if limit <= 0 {
+		return contacts
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if offset >= len(contacts) {
+		return []*model.Contact{}
+	}
+	end := offset + limit
+	if end > len(contacts) {
+		end = len(contacts)
+	}
+	return contacts[offset:end]
 }
 
 func (s *Service) handleChatRooms(c *gin.Context) {

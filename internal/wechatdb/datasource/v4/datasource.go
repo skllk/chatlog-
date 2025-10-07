@@ -397,11 +397,10 @@ func (ds *DataSource) GetContacts(ctx context.Context, key string, limit, offset
 	if err != nil {
 		return nil, errors.QueryFailed(query, err)
 	}
-	defer rows.Close()
 
-	contacts := []*model.Contact{}
+	contactsV4 := make([]*model.ContactV4, 0)
 	for rows.Next() {
-		var contactV4 model.ContactV4
+		contactV4 := &model.ContactV4{}
 		err := rows.Scan(
 			&contactV4.UserName,
 			&contactV4.LocalType,
@@ -411,9 +410,28 @@ func (ds *DataSource) GetContacts(ctx context.Context, key string, limit, offset
 		)
 
 		if err != nil {
+			_ = rows.Close()
 			return nil, errors.ScanRowFailed(err)
 		}
 
+		contactsV4 = append(contactsV4, contactV4)
+	}
+
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, errors.ScanRowFailed(err)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, errors.ScanRowFailed(err)
+	}
+
+	if err := fillContactLabelsV4(ctx, db, contactsV4); err != nil {
+		return nil, err
+	}
+
+	contacts := make([]*model.Contact, 0, len(contactsV4))
+	for _, contactV4 := range contactsV4 {
 		contacts = append(contacts, contactV4.Wrap())
 	}
 
