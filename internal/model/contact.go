@@ -1,11 +1,12 @@
 package model
 
 type Contact struct {
-	UserName string `json:"userName"`
-	Alias    string `json:"alias"`
-	Remark   string `json:"remark"`
-	NickName string `json:"nickName"`
-	IsFriend bool   `json:"isFriend"`
+	UserName string   `json:"userName"`
+	Alias    string   `json:"alias"`
+	Remark   string   `json:"remark"`
+	NickName string   `json:"nickName"`
+	IsFriend bool     `json:"isFriend"`
+	Labels   []string `json:"labels,omitempty"`
 }
 
 // CREATE TABLE Contact(
@@ -42,11 +43,12 @@ type Contact struct {
 // Reserved11 TEXT
 // )
 type ContactV3 struct {
-	UserName  string `json:"UserName"`
-	Alias     string `json:"Alias"`
-	Remark    string `json:"Remark"`
-	NickName  string `json:"NickName"`
-	Reserved1 int    `json:"Reserved1"` // 1 自己好友或自己加入的群聊; 0 群聊成员(非好友)
+	UserName  string   `json:"UserName"`
+	Alias     string   `json:"Alias"`
+	Remark    string   `json:"Remark"`
+	NickName  string   `json:"NickName"`
+	Reserved1 int      `json:"Reserved1"` // 1 自己好友或自己加入的群聊; 0 群聊成员(非好友)
+	Labels    []string `json:"labels,omitempty"`
 }
 
 func (c *ContactV3) Wrap() *Contact {
@@ -56,6 +58,7 @@ func (c *ContactV3) Wrap() *Contact {
 		Remark:   c.Remark,
 		NickName: c.NickName,
 		IsFriend: c.Reserved1 == 1,
+		Labels:   append([]string(nil), c.Labels...),
 	}
 }
 

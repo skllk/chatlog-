@@ -55,6 +55,16 @@ go install github.com/sjzar/chatlog@latest
 
 > 💡 **提示**: 部分功能有 cgo 依赖，编译前需确认本地有 C 编译环境。
 
+### 从源码打包发布
+
+如果需要自定义构建或为不同平台打包发布，可以直接使用仓库自带的 `Makefile` 和脚本：
+
+1. **本地单平台构建**：`make build` 会在 `bin/` 目录生成当前系统可执行文件。
+2. **多平台交叉编译**：`make crossbuild` 可同时生成 macOS、Linux、Windows（amd64/arm64）等平台二进制。
+3. **一键打包**：`bash script/package.sh` 会自动调用交叉编译、为每个平台产出压缩包，并在 `packages/` 目录生成 SHA256 校验文件，方便分发。
+
+更多打包选项（例如启用 `upx` 压缩、只构建特定平台等）可以参考 [打包与构建指引](docs/build.md)。
+
 ### 下载预编译版本
 
 访问 [Releases](https://github.com/sjzar/chatlog/releases) 页面下载适合您系统的预编译版本。
@@ -192,9 +202,40 @@ GET /api/v1/chatlog?time=2023-01-01&talker=wxid_xxx
 - `offset`: 分页偏移量
 - `format`: 输出格式，支持 `json`、`csv` 或纯文本
 
+### 联系人列表
+
+```
+GET /api/v1/contact?keyword=张三&label=客户&format=json
+```
+
+参数说明：
+
+- `keyword`: 备注 / 昵称关键字（可选）
+- `label`: 标签精确匹配（可选，传入后会在内存中过滤）
+- `limit`: 返回数量（过滤后仍支持分页）
+- `offset`: 起始偏移量
+- `format`: 输出格式，支持 `json`、`csv` 或纯文本
+
+返回示例：
+
+```json
+{
+  "items": [
+    {
+      "userName": "wxid_abc",
+      "alias": "",
+      "remark": "张三-客户",
+      "nickName": "张三",
+      "isFriend": true,
+      "labels": ["客户", "VIP"]
+    }
+  ],
+  "total": 1
+}
+```
+
 ### 其他 API 接口
 
-- **联系人列表**：`GET /api/v1/contact`
 - **群聊列表**：`GET /api/v1/chatroom`
 - **会话列表**：`GET /api/v1/session`
 

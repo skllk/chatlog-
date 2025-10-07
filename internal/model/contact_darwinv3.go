@@ -35,11 +35,12 @@ package model
 // openIMInfo BLOB
 // )
 type ContactDarwinV3 struct {
-	M_nsUsrName   string `json:"m_nsUsrName"`
-	Nickname      string `json:"nickname"`
-	M_nsRemark    string `json:"m_nsRemark"`
-	M_uiSex       int    `json:"m_uiSex"`
-	M_nsAliasName string `json:"m_nsAliasName"`
+	M_nsUsrName   string   `json:"m_nsUsrName"`
+	Nickname      string   `json:"nickname"`
+	M_nsRemark    string   `json:"m_nsRemark"`
+	M_uiSex       int      `json:"m_uiSex"`
+	M_nsAliasName string   `json:"m_nsAliasName"`
+	Labels        []string `json:"labels,omitempty"`
 }
 
 func (c *ContactDarwinV3) Wrap() *Contact {
@@ -49,5 +50,6 @@ func (c *ContactDarwinV3) Wrap() *Contact {
 		Remark:   c.M_nsRemark,
 		NickName: c.Nickname,
 		IsFriend: true,
+		Labels:   append([]string(nil), c.Labels...),
 	}
 }
